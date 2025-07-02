@@ -1,0 +1,35 @@
+type LogEntry = 
+ record {
+   data: text;
+   endpoint: text;
+   id: nat;
+   timestamp: int;
+ };
+type HttpResponse = 
+ record {
+   body: blob;
+   headers: vec record {
+                  text;
+                  text;
+                };
+   status_code: nat16;
+ };
+type HttpRequest = 
+ record {
+   body: blob;
+   headers: vec record {
+                  text;
+                  text;
+                };
+   method: text;
+   url: text;
+ };
+service : {
+  clearLogs: () -> ();
+  getCount: () -> (nat) query;
+  getLogs: () -> (vec LogEntry) query;
+  getLogsByEndpoint: (text) -> (vec LogEntry) query;
+  http_request: (HttpRequest) -> (HttpResponse) query;
+  logMes: (text) -> (nat);
+  logValidate: (text) -> (nat);
+}

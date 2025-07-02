@@ -39,6 +39,10 @@ actor TwoEndpointLogger {
             case null { "[Binary data]" };
         };
         
+        // Add debug print to see what URL we're actually getting
+        Debug.print("🔍 Incoming URL: " # req.url);
+        Debug.print("🔍 Method: " # req.method);
+        
         // Check which endpoint was called
         if (Text.contains(req.url, #text "/validate")) {
             // /validate endpoint
