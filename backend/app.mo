@@ -1,141 +1,215 @@
-import Debug "mo:base/Debug";
-import Time "mo:base/Time";
+import HashMap "mo:base/HashMap";
+import Nat "mo:base/Nat";
 import Array "mo:base/Array";
+import Time "mo:base/Time";
 import Text "mo:base/Text";
-import Blob "mo:base/Blob";
 
-actor TwoEndpointLogger {
-    
-    // Simple log entry structure
-    public type LogEntry = {
-        id: Nat;
-        timestamp: Int;
-        endpoint: Text;
-        data: Text;
+actor USSDGateway {
+
+  type Transaction = {
+    tx_type: Text;
+    amount: Nat;
+    to: ?Text;
+    timestamp: Int;
+  };
+
+  type User = {
+    phone: Text;
+    pin: Text;
+    balance: Nat;
+    history: [Transaction];
+    is_registered: Bool;
+  };
+
+  type RegistrationSession = {
+    phone: Text;
+    pin: Text;
+    stage: Text; // "phone", "pin", "confirm"
+  };
+
+  // Storage
+  private var users = HashMap.HashMap<Text, User>(10, Text.equal, Text.hash); // phone -> User
+  private var sessions = HashMap.HashMap<Text, RegistrationSession>(10, Text.equal, Text.hash); // msisdn -> session
+
+  // Check if user is registered by phone number
+  public func isUserRegistered(phone: Text) : async Bool {
+    switch (users.get(phone)) {
+      case (?user) user.is_registered;
+      case null false;
     };
-    
-    // Keep stable variables simple
-    private stable var logCounter: Nat = 0;
-    private stable var logEntries: [LogEntry] = [];
-    
-    // HTTP request/response types
-    public type HttpRequest = {
-        method: Text;
-        url: Text;
-        headers: [(Text, Text)];
-        body: Blob;
+  };
+
+  // Start registration process
+  public func startRegistration(phone: Text) : async Text {
+    let session : RegistrationSession = {
+      phone = phone;
+      pin = "";
+      stage = "phone";
     };
-    
-    public type HttpResponse = {
-        status_code: Nat16;
-        headers: [(Text, Text)];
-        body: Blob;
+    sessions.put(phone, session);
+    return "Registration started";
+  };
+
+  // Validate phone number format
+  public func validatePhone(phone: Text) : async Bool {
+    // Basic validation: should be 12 digits starting with 233
+    let phoneLength = Text.size(phone);
+    phoneLength == 12 and Text.startsWith(phone, #text "233")
+  };
+
+  // Set phone in registration
+  public func setRegistrationPhone(msisdn: Text, phone: Text) : async Text {
+    let isValid = await validatePhone(phone);
+    if (not isValid) {
+      return "Invalid phone number format";
     };
-    
-    // HTTP endpoint router
-    public query func http_request(req: HttpRequest) : async HttpResponse {
-        let bodyText = switch (Text.decodeUtf8(req.body)) {
-            case (?text) { text };
-            case null { "[Binary data]" };
+
+    // Check if phone already registered
+    switch (users.get(phone)) {
+      case (?_) return "Phone number already registered";
+      case null {
+        let session : RegistrationSession = {
+          phone = phone;
+          pin = "";
+          stage = "pin";
         };
-        
-        // Add debug print to see what URL we're actually getting
-        Debug.print("🔍 Incoming URL: " # req.url);
-        Debug.print("🔍 Method: " # req.method);
-        
-        // Check which endpoint was called
-        if (Text.contains(req.url, #text "/validate")) {
-            // /validate endpoint
-            Debug.print("✅ /validate endpoint called");
-            Debug.print("📦 Data: " # bodyText);
-            Debug.print("🕐 Time: " # debug_show(Time.now()));
-            Debug.print("=====================================");
-            
-            {
-                status_code = 200;
-                headers = [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")];
-                body = Text.encodeUtf8("{\"message\":\"You are not registerd\",\"action\":\"back\"}");
-            }
-        } else if (Text.contains(req.url, #text "/mes")) {
-            // /mes endpoint
-            Debug.print("📨 /mes endpoint called");
-            Debug.print("📦 Data: " # bodyText);
-            Debug.print("🕐 Time: " # debug_show(Time.now()));
-            Debug.print("=====================================");
-            
-            {
-                status_code = 200;
-                headers = [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")];
-                body = Text.encodeUtf8("{\"message\":\"You are registerd\",\"action\":\"next\"}");
-            }
-        } else {
-            // Unknown endpoint
-            Debug.print("❌ Unknown endpoint: " # req.url);
-            Debug.print("=====================================");
-            
-            {
-                status_code = 404;
-                headers = [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")];
-                body = Text.encodeUtf8("{\"error\":\"Endpoint not found\"}");
-            }
-        }
+        sessions.put(msisdn, session);
+        return "Phone number saved. Enter PIN";
+      };
     };
-    
-    // Function to log /validate calls (called after HTTP request)
-    public func logValidate(data: Text) : async Nat {
-        let entry: LogEntry = {
-            id = logCounter;
-            timestamp = Time.now();
-            endpoint = "/validate";
-            data = data;
+  };
+
+  // Validate PIN format (4 digits)
+  public func validatePin(pin: Text) : async Bool {
+    let pinLength = Text.size(pin);
+    pinLength == 4
+    // Add digit validation if needed
+  };
+
+  // Set PIN in registration
+  public func setRegistrationPin(msisdn: Text, pin: Text) : async Text {
+    let isValid = await validatePin(pin);
+    if (not isValid) {
+      return "PIN must be 4 digits";
+    };
+
+    switch (sessions.get(msisdn)) {
+      case null return "Registration session not found";
+      case (?session) {
+        let updatedSession : RegistrationSession = {
+          phone = session.phone;
+          pin = pin;
+          stage = "confirm";
         };
-        
-        logEntries := Array.append(logEntries, [entry]);
-        logCounter += 1;
-        
-        Debug.print("✅ Validate logged #" # debug_show(entry.id));
-        Debug.print("📄 Data: " # data);
-        
-        entry.id
+        sessions.put(msisdn, updatedSession);
+        return "PIN saved. Confirm PIN";
+      };
     };
-    
-    // Function to log /mes calls (called after HTTP request)
-    public func logMes(data: Text) : async Nat {
-        let entry: LogEntry = {
-            id = logCounter;
-            timestamp = Time.now();
-            endpoint = "/mes";
-            data = data;
+  };
+
+  // Confirm PIN and complete registration
+  public func confirmRegistrationPin(msisdn: Text, confirmPin: Text) : async Text {
+    switch (sessions.get(msisdn)) {
+      case null return "Registration session not found";
+      case (?session) {
+        if (session.pin != confirmPin) {
+          return "PIN confirmation failed. Try again";
         };
-        
-        logEntries := Array.append(logEntries, [entry]);
-        logCounter += 1;
-        
-        Debug.print("📨 Mes logged #" # debug_show(entry.id));
-        Debug.print("📄 Data: " # data);
-        
-        entry.id
+
+        // Create user account
+        let newUser : User = {
+          phone = session.phone;
+          pin = session.pin;
+          balance = 0;
+          history = [];
+          is_registered = true;
+        };
+
+        users.put(session.phone, newUser);
+        sessions.delete(msisdn);
+        return "Registration successful";
+      };
     };
-    
-    // Get all logs
-    public query func getLogs() : async [LogEntry] {
-        logEntries
+  };
+
+  // Get user by phone
+  public func getUserByPhone(phone: Text) : async ?User {
+    users.get(phone)
+  };
+
+  // Transfer money
+  public func transfer(fromPhone: Text, toPhone: Text, amount: Nat, pin: Text) : async Text {
+    switch (users.get(fromPhone)) {
+      case null return "Sender not registered";
+      case (?sender) {
+        if (sender.pin != pin) return "Invalid PIN";
+        if (sender.balance < amount) return "Insufficient funds";
+
+        switch (users.get(toPhone)) {
+          case null return "Recipient not found";
+          case (?receiver) {
+            let senderTransaction : Transaction = {
+              tx_type = "Transfer Sent";
+              amount = amount;
+              to = ?toPhone;
+              timestamp = Time.now();
+            };
+
+            let receiverTransaction : Transaction = {
+              tx_type = "Transfer Received";
+              amount = amount;
+              to = ?fromPhone;
+              timestamp = Time.now();
+            };
+
+            let updatedSender : User = {
+              phone = sender.phone;
+              pin = sender.pin;
+              balance = sender.balance - amount;
+              history = Array.append(sender.history, [senderTransaction]);
+              is_registered = sender.is_registered;
+            };
+
+            let updatedReceiver : User = {
+              phone = receiver.phone;
+              pin = receiver.pin;
+              balance = receiver.balance + amount;
+              history = Array.append(receiver.history, [receiverTransaction]);
+              is_registered = receiver.is_registered;
+            };
+
+            users.put(fromPhone, updatedSender);
+            users.put(toPhone, updatedReceiver);
+            return "Transfer successful";
+          };
+        };
+      };
     };
-    
-    // Get logs by endpoint
-    public query func getLogsByEndpoint(endpoint: Text) : async [LogEntry] {
-        Array.filter<LogEntry>(logEntries, func(entry) { entry.endpoint == endpoint });
+  };
+
+  // Get balance
+  public func getBalance(phone: Text) : async Nat {
+    switch (users.get(phone)) {
+      case null 0;
+      case (?user) user.balance;
     };
-    
-    // Get log count
-    public query func getCount() : async Nat {
-        logCounter
+  };
+
+  // Add funds for testing
+  public func addFunds(phone: Text, amount: Nat) : async Text {
+    switch (users.get(phone)) {
+      case null "User not found";
+      case (?user) {
+        let updatedUser : User = {
+          phone = user.phone;
+          pin = user.pin;
+          balance = user.balance + amount;
+          history = user.history;
+          is_registered = user.is_registered;
+        };
+        users.put(phone, updatedUser);
+        return "Funds added successfully";
+      };
     };
-    
-    // Clear logs (for testing)
-    public func clearLogs() : async () {
-        logEntries := [];
-        logCounter := 0;
-        Debug.print("🗑️ All logs cleared");
-    };
+  };
 }

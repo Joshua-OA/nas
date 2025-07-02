@@ -1,35 +1,28 @@
-type LogEntry = 
+type User = 
  record {
-   data: text;
-   endpoint: text;
-   id: nat;
+   balance: nat;
+   history: vec Transaction;
+   is_registered: bool;
+   phone: text;
+   pin: text;
+ };
+type Transaction = 
+ record {
+   amount: nat;
    timestamp: int;
- };
-type HttpResponse = 
- record {
-   body: blob;
-   headers: vec record {
-                  text;
-                  text;
-                };
-   status_code: nat16;
- };
-type HttpRequest = 
- record {
-   body: blob;
-   headers: vec record {
-                  text;
-                  text;
-                };
-   method: text;
-   url: text;
+   to: opt text;
+   tx_type: text;
  };
 service : {
-  clearLogs: () -> ();
-  getCount: () -> (nat) query;
-  getLogs: () -> (vec LogEntry) query;
-  getLogsByEndpoint: (text) -> (vec LogEntry) query;
-  http_request: (HttpRequest) -> (HttpResponse) query;
-  logMes: (text) -> (nat);
-  logValidate: (text) -> (nat);
+  addFunds: (text, nat) -> (text);
+  confirmRegistrationPin: (text, text) -> (text);
+  getBalance: (text) -> (nat);
+  getUserByPhone: (text) -> (opt User);
+  isUserRegistered: (text) -> (bool);
+  setRegistrationPhone: (text, text) -> (text);
+  setRegistrationPin: (text, text) -> (text);
+  startRegistration: (text) -> (text);
+  transfer: (text, text, nat, text) -> (text);
+  validatePhone: (text) -> (bool);
+  validatePin: (text) -> (bool);
 }

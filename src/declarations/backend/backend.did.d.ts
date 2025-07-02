@@ -2,31 +2,31 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
-export interface HttpRequest {
-  'url' : string,
-  'method' : string,
-  'body' : Uint8Array | number[],
-  'headers' : Array<[string, string]>,
-}
-export interface HttpResponse {
-  'body' : Uint8Array | number[],
-  'headers' : Array<[string, string]>,
-  'status_code' : number,
-}
-export interface LogEntry {
-  'id' : bigint,
-  'endpoint' : string,
-  'data' : string,
+export interface Transaction {
+  'to' : [] | [string],
   'timestamp' : bigint,
+  'tx_type' : string,
+  'amount' : bigint,
+}
+export interface User {
+  'pin' : string,
+  'balance' : bigint,
+  'history' : Array<Transaction>,
+  'phone' : string,
+  'is_registered' : boolean,
 }
 export interface _SERVICE {
-  'clearLogs' : ActorMethod<[], undefined>,
-  'getCount' : ActorMethod<[], bigint>,
-  'getLogs' : ActorMethod<[], Array<LogEntry>>,
-  'getLogsByEndpoint' : ActorMethod<[string], Array<LogEntry>>,
-  'http_request' : ActorMethod<[HttpRequest], HttpResponse>,
-  'logMes' : ActorMethod<[string], bigint>,
-  'logValidate' : ActorMethod<[string], bigint>,
+  'addFunds' : ActorMethod<[string, bigint], string>,
+  'confirmRegistrationPin' : ActorMethod<[string, string], string>,
+  'getBalance' : ActorMethod<[string], bigint>,
+  'getUserByPhone' : ActorMethod<[string], [] | [User]>,
+  'isUserRegistered' : ActorMethod<[string], boolean>,
+  'setRegistrationPhone' : ActorMethod<[string, string], string>,
+  'setRegistrationPin' : ActorMethod<[string, string], string>,
+  'startRegistration' : ActorMethod<[string], string>,
+  'transfer' : ActorMethod<[string, string, bigint, string], string>,
+  'validatePhone' : ActorMethod<[string], boolean>,
+  'validatePin' : ActorMethod<[string], boolean>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

@@ -1,29 +1,33 @@
 export const idlFactory = ({ IDL }) => {
-  const LogEntry = IDL.Record({
-    'id' : IDL.Nat,
-    'endpoint' : IDL.Text,
-    'data' : IDL.Text,
+  const Transaction = IDL.Record({
+    'to' : IDL.Opt(IDL.Text),
     'timestamp' : IDL.Int,
+    'tx_type' : IDL.Text,
+    'amount' : IDL.Nat,
   });
-  const HttpRequest = IDL.Record({
-    'url' : IDL.Text,
-    'method' : IDL.Text,
-    'body' : IDL.Vec(IDL.Nat8),
-    'headers' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
-  });
-  const HttpResponse = IDL.Record({
-    'body' : IDL.Vec(IDL.Nat8),
-    'headers' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
-    'status_code' : IDL.Nat16,
+  const User = IDL.Record({
+    'pin' : IDL.Text,
+    'balance' : IDL.Nat,
+    'history' : IDL.Vec(Transaction),
+    'phone' : IDL.Text,
+    'is_registered' : IDL.Bool,
   });
   return IDL.Service({
-    'clearLogs' : IDL.Func([], [], []),
-    'getCount' : IDL.Func([], [IDL.Nat], ['query']),
-    'getLogs' : IDL.Func([], [IDL.Vec(LogEntry)], ['query']),
-    'getLogsByEndpoint' : IDL.Func([IDL.Text], [IDL.Vec(LogEntry)], ['query']),
-    'http_request' : IDL.Func([HttpRequest], [HttpResponse], ['query']),
-    'logMes' : IDL.Func([IDL.Text], [IDL.Nat], []),
-    'logValidate' : IDL.Func([IDL.Text], [IDL.Nat], []),
+    'addFunds' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Text], []),
+    'confirmRegistrationPin' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
+    'getBalance' : IDL.Func([IDL.Text], [IDL.Nat], []),
+    'getUserByPhone' : IDL.Func([IDL.Text], [IDL.Opt(User)], []),
+    'isUserRegistered' : IDL.Func([IDL.Text], [IDL.Bool], []),
+    'setRegistrationPhone' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
+    'setRegistrationPin' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], []),
+    'startRegistration' : IDL.Func([IDL.Text], [IDL.Text], []),
+    'transfer' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
+    'validatePhone' : IDL.Func([IDL.Text], [IDL.Bool], []),
+    'validatePin' : IDL.Func([IDL.Text], [IDL.Bool], []),
   });
 };
 export const init = ({ IDL }) => { return []; };
