@@ -7,7 +7,7 @@
 [![USSD](https://img.shields.io/badge/USSD-Gateway-green?style=for-the-badge)](https://africastalking.com/)
 [![DeFi](https://img.shields.io/badge/DeFi-Platform-purple?style=for-the-badge)](https://defipulse.com/)
 
-## 🏆 Hackathon Innovation Award
+## Project Documentation
 
 **ICPay** represents a breakthrough in financial inclusion technology, combining the simplicity of USSD with the power of decentralized finance on the Internet Computer Protocol. This project addresses the critical challenge of bringing DeFi services to the 60% of Africans who remain unbanked despite high mobile phone penetration.
 
